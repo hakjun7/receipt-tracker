@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Receipt as ReceiptIcon } from "lucide-react";
+import { toast } from "sonner";
 import { SiteHeader } from "@/components/site-header";
 import { ReceiptCard } from "@/components/receipt-card";
 import { MonthBarChart, type MonthDatum } from "@/components/month-bar-chart";
@@ -17,7 +18,19 @@ export default function DashboardPage() {
   const [receipts, setReceipts] = useState<Receipt[] | null>(null);
 
   useEffect(() => {
-    setReceipts(getAll());
+    let cancelled = false;
+    getAll()
+      .then((rows) => {
+        if (!cancelled) setReceipts(rows);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        toast.error(err instanceof Error ? err.message : "목록 조회 실패");
+        setReceipts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const stats = useMemo(() => {

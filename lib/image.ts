@@ -12,11 +12,15 @@ export async function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-export async function resizeToDataUrl(file: File): Promise<string> {
-  if (!file.type.startsWith("image/")) return fileToDataUrl(file);
+export async function resizeToFile(file: File): Promise<File> {
+  if (!file.type.startsWith("image/")) return file;
   const bitmap = await createImageBitmap(file);
   const { width, height } = bitmap;
   const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
+  if (scale === 1 && file.type === "image/jpeg" && file.size < 1_200_000) {
+    bitmap.close?.();
+    return file;
+  }
   const w = Math.round(width * scale);
   const h = Math.round(height * scale);
 
@@ -27,17 +31,22 @@ export async function resizeToDataUrl(file: File): Promise<string> {
   const ctx = (canvas as HTMLCanvasElement | OffscreenCanvas).getContext("2d");
   if (!ctx) {
     bitmap.close?.();
-    return fileToDataUrl(file);
+    return file;
   }
   (ctx as CanvasRenderingContext2D).drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
 
-  if (canvas instanceof HTMLCanvasElement) {
-    return canvas.toDataURL("image/jpeg", JPEG_QUALITY);
-  }
-  const blob = await (canvas as OffscreenCanvas).convertToBlob({
-    type: "image/jpeg",
-    quality: JPEG_QUALITY,
-  });
-  return fileToDataUrl(new File([blob], file.name, { type: "image/jpeg" }));
+  const blob =
+    canvas instanceof HTMLCanvasElement
+      ? await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
+        )
+      : await (canvas as OffscreenCanvas).convertToBlob({
+          type: "image/jpeg",
+          quality: JPEG_QUALITY,
+        });
+  if (!blob) return file;
+
+  const baseName = file.name.replace(/\.[^.]+$/, "") || "receipt";
+  return new File([blob], `${baseName}.jpg`, { type: "image/jpeg" });
 }

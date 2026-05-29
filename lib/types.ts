@@ -8,12 +8,12 @@ export type ExtractedField = {
 export type Receipt = {
   id: string;
   createdAt: string;
-  imageDataUrl: string;
+  imageUrl: string | null;
   rawFields: ExtractedField[];
   store: string;
-  date: string;
+  date: string | null;
   total: number;
-  memo?: string;
+  memo?: string | null;
 };
 
 export type ExtractResponse = {

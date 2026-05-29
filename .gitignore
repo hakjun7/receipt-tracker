@@ -68,3 +68,4 @@ CLAUDE.local.md
 # local dev artifacts
 /dev.log
 /scripts/screenshots/
+/ref/

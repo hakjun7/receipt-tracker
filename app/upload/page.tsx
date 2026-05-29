@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Upload, Loader2, ImageIcon, X } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
-import { resizeToDataUrl, fileToDataUrl } from "@/lib/image";
+import { resizeToFile, fileToDataUrl } from "@/lib/image";
 import { parseReceipt } from "@/lib/parse-receipt";
-import { save } from "@/lib/storage";
-import type { ExtractResponse, Receipt } from "@/lib/types";
+import { create } from "@/lib/storage";
+import type { ExtractResponse } from "@/lib/types";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -56,21 +56,19 @@ export default function UploadPage() {
         throw new Error(data.error || `오류 (${res.status})`);
       }
       const parsed = parseReceipt(data);
-      const imageDataUrl = file.type.startsWith("image/")
-        ? await resizeToDataUrl(file)
-        : (previewUrl ?? "");
-      const receipt: Receipt = {
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
-        imageDataUrl,
-        rawFields: parsed.rawFields,
+
+      toast.loading("저장 중...", { id: toastId });
+      const uploadFile = file.type.startsWith("image/") ? await resizeToFile(file) : file;
+      const created = await create({
+        imageFile: uploadFile,
         store: parsed.store,
         date: parsed.date || new Date().toISOString().slice(0, 10),
         total: parsed.total,
-      };
-      save(receipt);
+        rawFields: parsed.rawFields,
+      });
+
       toast.success("저장되었습니다.", { id: toastId });
-      router.push(`/receipts/${receipt.id}`);
+      router.push(`/receipts/${created.id}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "알 수 없는 오류";
       toast.error(msg, { id: toastId });

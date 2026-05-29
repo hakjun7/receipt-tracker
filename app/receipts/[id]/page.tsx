@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Save, ChevronDown } from "lucide-react";
+import { ArrowLeft, Trash2, Save, ChevronDown, Loader2 } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { get, update, remove } from "@/lib/storage";
 import { formatKRW, formatDateLong } from "@/lib/format";
@@ -31,41 +31,66 @@ export default function ReceiptDetailPage() {
   const [receipt, setReceipt] = useState<Receipt | null | undefined>(undefined);
   const [showRaw, setShowRaw] = useState(false);
   const [form, setForm] = useState({ store: "", date: "", total: "", memo: "" });
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const r = get(id);
-    setReceipt(r);
-    if (r) {
-      setForm({
-        store: r.store,
-        date: r.date,
-        total: String(r.total),
-        memo: r.memo ?? "",
+    let cancelled = false;
+    get(id)
+      .then((r) => {
+        if (cancelled) return;
+        setReceipt(r);
+        if (r) {
+          setForm({
+            store: r.store,
+            date: r.date ?? "",
+            total: String(r.total),
+            memo: r.memo ?? "",
+          });
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        toast.error(err instanceof Error ? err.message : "조회 실패");
+        setReceipt(null);
       });
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
-  function handleSave() {
+  async function handleSave() {
     if (!receipt) return;
     const total = Number(form.total.replace(/[^\d.-]/g, "")) || 0;
-    const updated = update(receipt.id, {
-      store: form.store.trim(),
-      date: form.date,
-      total,
-      memo: form.memo.trim() || undefined,
-    });
-    if (updated) {
+    setIsSaving(true);
+    try {
+      const updated = await update(receipt.id, {
+        store: form.store.trim(),
+        date: form.date || null,
+        total,
+        memo: form.memo.trim() || null,
+      });
       setReceipt(updated);
       toast.success("저장되었습니다.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "저장 실패");
+    } finally {
+      setIsSaving(false);
     }
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!receipt) return;
     if (!confirm("이 영수증을 삭제할까요?")) return;
-    remove(receipt.id);
-    toast.success("삭제되었습니다.");
-    router.push("/");
+    setIsDeleting(true);
+    try {
+      await remove(receipt.id);
+      toast.success("삭제되었습니다.");
+      router.push("/");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "삭제 실패");
+      setIsDeleting(false);
+    }
   }
 
   if (receipt === undefined) {
@@ -113,18 +138,33 @@ export default function ReceiptDetailPage() {
             </Button>
           </Link>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleDelete}>
-              <Trash2 className="size-4" /> 삭제
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isDeleting || isSaving}
+            >
+              {isDeleting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Trash2 className="size-4" />
+              )}{" "}
+              삭제
             </Button>
-            <Button size="sm" onClick={handleSave}>
-              <Save className="size-4" /> 저장
+            <Button size="sm" onClick={handleSave} disabled={isSaving || isDeleting}>
+              {isSaving ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Save className="size-4" />
+              )}{" "}
+              저장
             </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="p-0 overflow-hidden">
-            {receipt.imageDataUrl ? (
+            {receipt.imageUrl ? (
               <Dialog>
                 <DialogTrigger
                   className="block w-full bg-muted cursor-zoom-in"
@@ -132,7 +172,7 @@ export default function ReceiptDetailPage() {
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={receipt.imageDataUrl}
+                    src={receipt.imageUrl}
                     alt={receipt.store || "영수증"}
                     className="w-full max-h-[600px] object-contain"
                   />
@@ -141,7 +181,7 @@ export default function ReceiptDetailPage() {
                   <DialogTitle className="sr-only">영수증 이미지</DialogTitle>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={receipt.imageDataUrl}
+                    src={receipt.imageUrl}
                     alt={receipt.store || "영수증"}
                     className="w-full max-h-[80vh] object-contain"
                   />
