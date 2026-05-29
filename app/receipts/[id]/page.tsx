@@ -172,7 +172,7 @@ export default function ReceiptDetailPage() {
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={receipt.imageUrl}
+                    src={`/api/receipts/${receipt.id}/image`}
                     alt={receipt.store || "영수증"}
                     className="w-full max-h-[600px] object-contain"
                   />
@@ -181,7 +181,7 @@ export default function ReceiptDetailPage() {
                   <DialogTitle className="sr-only">영수증 이미지</DialogTitle>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={receipt.imageUrl}
+                    src={`/api/receipts/${receipt.id}/image`}
                     alt={receipt.store || "영수증"}
                     className="w-full max-h-[80vh] object-contain"
                   />

@@ -13,7 +13,7 @@ export function ReceiptCard({ receipt }: { receipt: Receipt }) {
           {receipt.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={receipt.imageUrl}
+              src={`/api/receipts/${receipt.id}/image`}
               alt={receipt.store || "영수증"}
               className="w-full h-full object-cover"
               loading="lazy"

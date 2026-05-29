@@ -35,8 +35,12 @@ export async function create(input: CreateInput): Promise<Receipt> {
 
   const res = await fetch("/api/receipts", { method: "POST", body: form });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `저장 실패 (${res.status})`);
+    const err = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      detail?: string;
+    };
+    const msg = [err.error, err.detail].filter(Boolean).join(" — ");
+    throw new Error(msg || `저장 실패 (${res.status})`);
   }
   return (await res.json()) as Receipt;
 }
@@ -55,8 +59,12 @@ export async function update(id: string, patch: UpdateInput): Promise<Receipt> {
     body: JSON.stringify(patch),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `수정 실패 (${res.status})`);
+    const err = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      detail?: string;
+    };
+    const msg = [err.error, err.detail].filter(Boolean).join(" — ");
+    throw new Error(msg || `수정 실패 (${res.status})`);
   }
   return (await res.json()) as Receipt;
 }

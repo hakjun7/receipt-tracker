@@ -1,11 +1,11 @@
 import "server-only";
-import { put, del } from "@vercel/blob";
+import { put, del, get } from "@vercel/blob";
 
 export async function uploadReceiptImage(file: File): Promise<string> {
   const ext = guessExt(file);
   const key = `receipts/${crypto.randomUUID()}${ext}`;
   const blob = await put(key, file, {
-    access: "public",
+    access: "private",
     contentType: file.type || "application/octet-stream",
     addRandomSuffix: false,
   });
@@ -19,6 +19,10 @@ export async function deleteReceiptImage(url: string | null | undefined): Promis
   } catch (err) {
     console.error("blob delete failed", url, err);
   }
+}
+
+export async function getReceiptImageStream(url: string) {
+  return get(url, { access: "private" });
 }
 
 function guessExt(file: File): string {

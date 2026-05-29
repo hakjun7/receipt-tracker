@@ -18,13 +18,21 @@ function toReceipt(row: ReceiptRow): Receipt {
   };
 }
 
+function errMessage(err: unknown): string {
+  if (err instanceof Error) return `${err.name}: ${err.message}`.slice(0, 400);
+  return String(err).slice(0, 400);
+}
+
 export async function GET() {
   try {
     const rows = await listReceipts();
     return NextResponse.json(rows.map(toReceipt));
   } catch (err) {
     console.error("GET /api/receipts", err);
-    return NextResponse.json({ error: "목록 조회 실패" }, { status: 500 });
+    return NextResponse.json(
+      { error: "목록 조회 실패", detail: errMessage(err) },
+      { status: 500 },
+    );
   }
 }
 
@@ -65,7 +73,10 @@ export async function POST(req: Request) {
       imageUrl = await uploadReceiptImage(image);
     } catch (err) {
       console.error("blob upload failed", err);
-      return NextResponse.json({ error: "이미지 업로드 실패" }, { status: 500 });
+      return NextResponse.json(
+        { error: "이미지 업로드 실패", detail: errMessage(err) },
+        { status: 500 },
+      );
     }
   }
 
@@ -74,6 +85,9 @@ export async function POST(req: Request) {
     return NextResponse.json(toReceipt(row), { status: 201 });
   } catch (err) {
     console.error("POST /api/receipts", err);
-    return NextResponse.json({ error: "저장 실패" }, { status: 500 });
+    return NextResponse.json(
+      { error: "저장 실패", detail: errMessage(err) },
+      { status: 500 },
+    );
   }
 }

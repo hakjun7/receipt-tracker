@@ -44,14 +44,21 @@ npx vercel env pull .env.local
 
 ### 3) DB 스키마 초기화
 
-처음 한 번 (또는 새 Neon 인스턴스를 연결할 때마다):
+**방법 A — 배포된 URL 에서 직접 (가장 간단):**
+
+```bash
+curl -X POST https://<배포URL>/api/setup
+```
+
+production Neon 에 `receipts` 테이블이 idempotent 하게 생성됩니다.
+
+**방법 B — 로컬에서 production env 끌어와서:**
 
 ```bash
 npm install
+npx vercel env pull .env.local
 npm run db:init
 ```
-
-> `receipts` 테이블 + 인덱스를 idempotent 하게 만듭니다 (이미 있으면 건너뜀).
 
 ### 4) 개발 서버 실행
 
@@ -179,18 +186,21 @@ create index receipts_created_at_idx on receipts (created_at desc);
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
+| GET/POST | `/api/setup` | 1회 호출 — receipts 테이블/인덱스 생성 (idempotent) |
 | POST | `/api/extract` | 이미지 → OCR 결과 (저장 X) |
 | GET | `/api/receipts` | 전체 영수증 목록 |
 | POST | `/api/receipts` | 새 영수증 생성 (Blob 업로드 + DB INSERT) |
 | GET | `/api/receipts/[id]` | 단건 조회 |
 | PATCH | `/api/receipts/[id]` | 부분 수정 (store/date/total/memo) |
 | DELETE | `/api/receipts/[id]` | DB 삭제 + Blob 이미지 삭제 |
+| GET | `/api/receipts/[id]/image` | 영수증 이미지 프록시 (private Blob → 스트리밍) |
 
 ---
 
 ## 주의 사항 / 알려진 제약
 
 - 업로드 파일 크기 상한은 **10 MB** 입니다 (`app/api/receipts/route.ts`, `app/api/extract/route.ts`). Vercel Hobby 의 함수 요청 본문 한도(4.5 MB)에 걸리지 않도록 클라이언트에서 1600px JPEG 로 리사이즈한 뒤 업로드합니다.
+- **Blob store 는 private 으로 동작합니다.** 이미지는 직접 Blob URL 이 아니라 `/api/receipts/[id]/image` 프록시 라우트를 거쳐 표시됩니다. (별도의 인증은 없으므로 보안은 receipt UUID 의 추측 불가능성에 의존합니다.)
 - 인증/멀티유저 분리는 구현돼 있지 않습니다. 단일 사용자 / 개인 용도 기준.
 - Upstage 응답의 필드 키 이름이 달라질 경우 `lib/parse-receipt.ts` 의 `vendor_name` / `transaction_date` / `total_amount` 매핑을 조정하세요.
 
